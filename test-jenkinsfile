@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Taken from https://www.jenkins.io/doc/book/pipeline/development/ (cc-by-sa)
+
+if [[ -z "$JENKINS_URL" ]]; then
+  if [[ -z "$1" ]]; then
+    >&2 echo "No JENKINS_URL provided, either set the JENKINS_URL environment variable or call the script with a parameter: $0 YOUR_JENKINS_URL"
+    exit 1
+  fi
+  JENKINS_URL="$1"  
+  shift
+fi
+
+if [ -f "$1" ]; then
+  JENKINSFILE="$1"
+else
+  JENKINSFILE="Jenkinsfile"
+fi
+
+if [ ! -f "$JENKINSFILE" ]; then
+  >&2 echo "No valid Jenkinsfile at '$JENKINSFILE' (current path is $PWD)"
+  exit 1
+fi
+
+# JENKINS_CRUMB is needed if your Jenkins controller has CRSF protection enabled as it should
+JENKINS_CRUMB=`curl "$JENKINS_URL/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)"`
+
+curl -X POST -H $JENKINS_CRUMB -F "jenkinsfile=<$JENKINSFILE" $JENKINS_URL/pipeline-model-converter/validate
